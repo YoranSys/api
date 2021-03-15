@@ -1,12 +1,14 @@
 version: '3'
 services:
-  blagues-api:
+  app:
     container_name: blagues-api
     build:
       context: ./
       dockerfile: ./Dockerfile.dev
     volumes:
       - ./src:/app/src:cached
+      - ./build:/app/build:cached
+      - ./index.js:/app/index.js:cached
       - ./blagues.json:/usr/src/app/blagues.json:cached
       - ./database.sqlite:/database.sqlite:cached
     env_file:
@@ -20,6 +22,7 @@ services:
       dockerfile: ./Dockerfile.dev
     volumes:
       - ./src:/app/src:cached
+      - ./build:/app/build:cached
       - ./blagues.json:/usr/src/app/blagues.json:cached
     env_file:
       - ./.env
