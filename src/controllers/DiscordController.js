@@ -8,8 +8,8 @@ const { generateAPIToken, generateKey } = require('../utils')
 const uri = encodeURIComponent(`${process.env.host_url}/login/callback`)
 
 function redirect() {
-  return function (req, res) {
-    return res.redirect(
+  return function (request, reply) {
+    return reply.redirect(
       301,
       `https://discordapp.com/api/oauth2/authorize?client_id=${process.env.discord_client_id}&scope=identify&response_type=code&redirect_uri=${uri}`,
     )
@@ -17,9 +17,9 @@ function redirect() {
 }
 
 function callback() {
-  return async function (req, res) {
-    if (!req.query.code) {
-      return res.status(400).json({
+  return async function (request, reply) {
+    if (!request.query.code) {
+      return reply.code(400).send({
         status: 400,
         error: 'Bad Request',
         message: 'Code query missing',
@@ -29,7 +29,7 @@ function callback() {
     try {
       const { data: authPayload } = await axios.post(
         `https://discordapp.com/api/oauth2/token?grant_type=authorization_code&redirect_uri=${uri}`,
-        `code=${req.query.code}`,
+        `code=${request.query.code}`,
         {
           auth: {
             username: process.env.discord_client_id,
@@ -63,7 +63,7 @@ function callback() {
         )
       } else {
         const key = generateKey()
-        const token = await generateAPIToken(userPayload.id, key, 100)
+        const token = generateAPIToken(userPayload.id, key, 100)
 
         await Users.create({
           user_id: userPayload.id,
@@ -77,16 +77,14 @@ function callback() {
         })
       }
 
-      const key = await jwt.sign(
+      const token = jwt.sign(
         authPayload.access_token,
         process.env.jwt_encryption_web,
       )
-      res.cookies.set('auth', key)
+      reply.setCookie('auth', token).redirect('/account')
     } catch (error) {
       console.error('Discord-Auth', error)
     }
-
-    return res.redirect('/account')
   }
 }
 

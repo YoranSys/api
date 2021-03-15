@@ -1,39 +1,40 @@
-const express = require('express')
-const bodyParser = require('body-parser')
-const helmet = require('helmet')
-const cookieParser = require('cookie-parser')
-const cookies = require('cookies')
-
-const cors = require('./middlewares/cors')
-const routes = require('./router')
+const fastify = require('fastify')
+const fastifyStatic = require('fastify-static')
+const fastifySession = require('fastify-session')
+const fastifyCookie = require('fastify-cookie')
 const path = require('path')
 
-const app = express()
+const app = fastify({
+  logger: false,
+})
 
-app.use(bodyParser.json())
-app.use(helmet())
-app.use(cookieParser())
-app.use(cookies.express(['random key']))
-app.use(cors())
+app.register(require('point-of-view'), {
+  engine: { ejs: require('ejs') },
+  root: path.join(__dirname, 'views'),
+})
 
-app.use('/', express.static(path.join(__dirname, '/public/')))
-app.use('/files', express.static(path.join(__dirname, '../build')))
+app.register(fastifyCookie)
+app.register(fastifySession, {
+  secret: process.env.cookie_secret || 'random key',
+})
 
-app.set('view engine', 'ejs')
-app.set('views', path.join(__dirname, './views'))
+// attention si ça bug c'est ici
+app.register(require('fastify-cors'))
 
-app.locals.getTypeName = function (key) {
-  const types = {
-    limit: 'Blague limite limite',
-    global: 'Blague normale',
-    dark: 'Blague humour noir',
-    dev: 'Blague de développeurs',
-    beauf: 'Humour de beaufs',
-    blondes: 'Blagues blondes',
-  }
-  return types[key]
-}
+// first plugin
+app.register(fastifyStatic, {
+  root: path.join(__dirname, './public'),
+  prefix: '/files/',
+})
 
-app.use('/', routes)
+// second plugin
+app.register(fastifyStatic, {
+  root: path.join(__dirname, '../build'),
+  decorateReply: false,
+})
+
+app.register(require('./router/website'))
+
+// app.register(require('./router/api'), { prefix: 'api' })
 
 module.exports = app

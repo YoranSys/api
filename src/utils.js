@@ -28,8 +28,18 @@ const generateKey = () => {
   return result
 }
 
+const jokesTypes = {
+  limit: 'Blague limite limite',
+  global: 'Blague normale',
+  dark: 'Blague humour noir',
+  dev: 'Blague de développeurs',
+  beauf: 'Humour de beaufs',
+  blondes: 'Blagues blondes',
+}
+
 module.exports = {
   generateAPIToken,
   random,
   generateKey,
+  jokesTypes,
 }

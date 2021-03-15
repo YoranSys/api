@@ -6,8 +6,14 @@ require('./src/bot')
 models.database
   .sync()
   .then(() => {
-    const server = app.listen(process.env.port || 3000, () => {
-      console.log(`API lancée sur http://127.0.0.1:${server.address().port}`)
-    })
+    app
+      .listen(process.env.port || 3001, '0.0.0.0')
+      .then(address => {
+        console.log(`API lancée sur ${address}`)
+      })
+      .catch(err => {
+        app.log.error(err)
+        process.exit(1)
+      })
   })
   .catch(console.error)

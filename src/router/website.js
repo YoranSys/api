@@ -1,41 +1,61 @@
-const express = require('express')
-
-const router = express.Router()
-
-const auth = require('../middlewares/auth-web')
-
 const DiscordController = require('../controllers/DiscordController')
+// const fp = require('fastify-plugin')
+const { jokesTypes } = require('../utils')
 
 const {
   jokesCount,
   randomJokeByType,
 } = require('../controllers/JokeController')
 
-router.use(auth())
+const jwt = require('jsonwebtoken')
+const axios = require('axios')
 
-router.get('/', (req, res) => {
-  res.render('home', {
-    user: req.user,
-    token: process.env.token,
-    count: jokesCount(),
-    randomJoke: randomJokeByType('global').response,
+const { Users } = require('../models')
+
+module.exports = async function (fastify) {
+  fastify.addHook('preHandler', async (request, reply) => {
+    const auth = request.cookies.auth
+
+    if (auth) {
+      const token = jwt.verify(auth, process.env.jwt_encryption_web)
+      try {
+        const { data } = await axios.get(
+          'http://discordapp.com/api/users/@me',
+          { headers: { Authorization: `Bearer ${token}` } },
+        )
+        const user = await Users.findOne({
+          where: { user_id: data.id },
+          raw: true,
+        })
+        request.session.user = user
+      } catch (error) {
+        console.error('Auth-Web:', error)
+      }
+    }
   })
-})
 
-router.get('/account', (req, res) => {
-  if (!req.user) {
-    return res.redirect('/login')
-  }
-  res.render('account', {
-    user: req.user,
+  fastify.get('/', (request, reply) => {
+    console.log('call')
+    const joke = randomJokeByType('global').response
+    joke.displayType = jokesTypes[joke]
+    reply.view('home.ejs', {
+      user: request.user,
+      token: process.env.token,
+      count: jokesCount(),
+      randomJoke: joke,
+    })
   })
-})
 
-router.get('/login', DiscordController.redirect())
-router.get('/login/callback', DiscordController.callback())
+  fastify.get('/account', (request, reply) => {
+    // if (!request.user) {
+    //   return reply.redirect('/login')
+    // }
+    // console.log(request.user)
+    reply.view('account.ejs', {
+      user: request.user,
+    })
+  })
 
-router.get('*', (req, res) => {
-  res.send('404')
-})
-
-module.exports = router
+  fastify.get('/login', DiscordController.redirect())
+  fastify.get('/login/callback', DiscordController.callback())
+}
